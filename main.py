@@ -1,11 +1,49 @@
 import argparse
 import pathlib
-import plot_utils
+from platform import java_ver
+from src import hidrogel_pipeline
+import os
+
+AMOUNT_OF_STEPS = 5
+
+# def validate_steps_to_run(steps_to_run)
+#     if steps_to_run != sorted(steps_to_run):
+#         raise ValueError("steps must be run in order")
+#     if len(steps_to_run) != len(set(steps_to_run)):
+#         raise ValueError("steps can only be run once per execution")
+#     if any(steps_to_run, lambda step: step > AMOUNT_OF_STEPS):
+#         raise ValueError(f"There are only {AMOUNT_OF_STEPS} steps in the pipeline")
 
 
 
 def main(args):
-    print(args)
+    steps_to_run = args.run_steps
+    # validate_steps_to_run(steps_to_run)
+    steps = [
+        (hidrogel_pipeline.preprocess,[]),
+        (hidrogel_pipeline.extract_features,["preprocessed.tif"]),
+        (hidrogel_pipeline.todo,[]),
+        (hidrogel_pipeline.todo,[]),
+        (hidrogel_pipeline.todo,[])
+
+    ]
+    pipeline = [steps[i]
+        for i in range(AMOUNT_OF_STEPS)
+        if (i+1) in steps_to_run]
+
+    for step, requirement in pipeline:
+        if requirement:
+            check_file_exists(requirement, args.outputs_folder)
+        step(args)
+
+
+
+def check_file_exists(filenames, folder):
+    for filename in filenames:
+            path = os.path.join(folder, filename)
+            if not os.path.isfile(path):
+                raise FileNotFoundError(f"File not found: {path}")
+
 
 
 
@@ -13,7 +51,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Command line  tool for hidrogel videos analysis')
     _ = parser.add_argument("-f", "--filepath", required=True, help='path to the file being analized', type=pathlib.Path)
-    _ = parser.add_argument("-o", "--outputs", required=False, help='folder used to save the intermediate and final results. The default is to use an outputs folder', type=pathlib.Path)
+    _ = parser.add_argument("-o", "--outputs-folder", required=False, help='folder used to save the intermediate and final results. The default is to use an outputs folder', type=pathlib.Path, default="outputs/")
     _ = parser.add_argument("-fps", "--fps", required=False, help='frames per second on the video', type=pathlib.Path, default=80)
     _ = parser.add_argument("-s", "--start-at-frame", required=False, help='skip up to this frame in the video', type=int, default=0)
     _ = parser.add_argument("-ct", "--cut-top", required=False, help='cut this amount of pixels from the top '+
