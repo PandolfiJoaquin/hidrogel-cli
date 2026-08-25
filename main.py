@@ -1,7 +1,10 @@
 from pathlib import Path
 import argparse
+from argparse import Namespace
 import pathlib
 from platform import java_ver
+
+from typing import Callable
 from src import hidrogel_pipeline
 import os
 
@@ -15,14 +18,15 @@ AMOUNT_OF_STEPS = 5
 #     if any(steps_to_run, lambda step: step > AMOUNT_OF_STEPS):
 #         raise ValueError(f"There are only {AMOUNT_OF_STEPS} steps in the pipeline")
 
+Step = tuple[Callable[[Namespace], None], list[str]] # (callable, [all, callable, dependencies])
 
-
-def main(args):
+def main(args: Namespace):
     Path(args.outputs_folder).mkdir(parents=True, exist_ok=True)
 
     steps_to_run = args.run_steps
     # validate_steps_to_run(steps_to_run)
-    steps = [
+
+    steps: list[Step] = [
         (hidrogel_pipeline.preprocess,[]),
         (hidrogel_pipeline.extract_features,["preprocessed.tif"]),
         (hidrogel_pipeline.extract_velocities,["features.csv"]),
@@ -41,7 +45,7 @@ def main(args):
 
 
 
-def check_file_exists(filenames, folder):
+def check_file_exists(filenames: list[str], folder: Path):
     for filename in filenames:
             path = os.path.join(folder, filename)
             if not os.path.isfile(path):

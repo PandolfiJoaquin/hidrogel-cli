@@ -1,3 +1,4 @@
+from argparse import Namespace
 from pathlib import Path
 '''
 Extracts the background from each frame in the video
@@ -7,7 +8,7 @@ on the array (background extraction, increase saturation, etc)
 
 the result is save as preprocessed.tif
 '''
-def preprocess(args):
+def preprocess(args: Namespace) -> None:
     filename        = args.filepath
     starting_frame  = args.start_at_frame
     cut_top         = args.cut_top
@@ -22,7 +23,7 @@ def preprocess(args):
     It requires preprocessed.tif
     the result is save as features.csv
 '''
-def extract_features(args):
+def extract_features(args: Namespace) -> None:
     Path(args.outputs_folder, "features.csv",).touch()
     print("extract_features")
 
@@ -31,7 +32,7 @@ def extract_features(args):
     requires: features.csv
     saves to: velocities.csv
 '''
-def extract_velocities(args):
+def extract_velocities(args: Namespace) -> None:
     Path(args.outputs_folder, "velocities.csv",).touch()
     print("todo")
 
@@ -41,9 +42,9 @@ def extract_velocities(args):
    requires: velocities.csv
    saves to: fields.tif
 '''
-def calculate_velocity_field(args):
+def calculate_velocity_field(args: Namespace) -> None:
     print("todo")
 
 
-def transition_velocity_area(args):
+def transition_velocity_area(args: Namespace) -> None:
     print("todo")
