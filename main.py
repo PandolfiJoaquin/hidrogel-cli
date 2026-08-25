@@ -1,3 +1,4 @@
+from pathlib import Path
 import argparse
 import pathlib
 from platform import java_ver
@@ -17,14 +18,16 @@ AMOUNT_OF_STEPS = 5
 
 
 def main(args):
+    Path(args.outputs_folder).mkdir(parents=True, exist_ok=True)
+
     steps_to_run = args.run_steps
     # validate_steps_to_run(steps_to_run)
     steps = [
         (hidrogel_pipeline.preprocess,[]),
         (hidrogel_pipeline.extract_features,["preprocessed.tif"]),
-        (hidrogel_pipeline.todo,[]),
-        (hidrogel_pipeline.todo,[]),
-        (hidrogel_pipeline.todo,[])
+        (hidrogel_pipeline.extract_velocities,["features.csv"]),
+        (hidrogel_pipeline.calculate_velocity_field,["velocities.csv"]),
+        (hidrogel_pipeline.transition_velocity_area,["velocities.csv"])
 
     ]
     pipeline = [steps[i]
