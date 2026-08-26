@@ -4,4 +4,11 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "numpy>=2.4.3",
+    "pandas>=3.0.1",
+    "pims>=0.7",
+    "scipy>=1.16",
+    "tifffile>=2026.3.3",
+    "trackpy>=0.7",
+]
