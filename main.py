@@ -45,9 +45,9 @@ def main(args: Namespace):
 
 def check_file_exists(filenames: list[str], folder: Path):
     for filename in filenames:
-            path = os.path.join(folder, filename)
-            if not os.path.isfile(path):
-                raise FileNotFoundError(f"File not found: {path}")
+        path = os.path.join(folder, filename)
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"File not found: {path}")
 
 
 
@@ -57,10 +57,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Command line  tool for hidrogel videos analysis')
     _ = parser.add_argument("-f", "--filepath", required=True, help='path to the file being analized', type=pathlib.Path)
     _ = parser.add_argument("-o", "--outputs-folder", required=False, help='folder used to save the intermediate and final results. The default is to use an outputs folder', type=pathlib.Path, default="outputs/")
-    _ = parser.add_argument("-fps", "--fps", required=True, help='frames per second at which the video was captured. '+
-        'Together with --px-per-mm it converts velocities from px/frame into mm/s, and it sets the length in frames of '+
-        'every time window in the analysis. There is no default and no way to infer it from the file: a wrong value is '+
-        'not an error, it silently rescales every velocity and acceleration the pipeline reports', type=float)
+    _ = parser.add_argument("-fps", "--fps", required=True, help='frames per second at which the video was captured', type=float)
     _ = parser.add_argument("-pxmm", "--px-per-mm", required=True, help='camera calibration: how many pixels of the '+
         'image correspond to one millimeter in the silo. Together with --fps it converts velocities from px/frame into '+
         'mm/s. It depends on the camera position, so it has to be measured again whenever the setup moves: a wrong '+
@@ -84,7 +81,8 @@ if __name__ == "__main__":
             "2=Build trayectories"
             "3=Extract velocities for each trayectory"
             "4=Extract velocity field for each frame. "
-            "Example: --run-steps 1,2"),
+            '5=Calculates the area in a "transition velocity" area. '
+            "Example: --run-steps 2,3 would run the step 2 using the last output from 1, and then 3 with the new file. Beware that now the outputs from 4 and 5 will not correspond to the last data outputed from 3"),
         default=[1,2,3,4,5]
 )
     args = parser.parse_args()
