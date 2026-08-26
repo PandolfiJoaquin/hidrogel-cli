@@ -1,12 +1,11 @@
-from pathlib import Path
 import argparse
-from argparse import Namespace
-import pathlib
-from platform import java_ver
-
-from typing import Callable
-from src import hidrogel_pipeline
 import os
+import pathlib
+from argparse import Namespace
+from collections.abc import Callable
+from pathlib import Path
+
+from src import hidrogel_pipeline
 
 AMOUNT_OF_STEPS = 5
 
@@ -31,8 +30,7 @@ def main(args: Namespace):
         (hidrogel_pipeline.extract_features,["preprocessed.tif"]),
         (hidrogel_pipeline.extract_velocities,["features.csv"]),
         (hidrogel_pipeline.calculate_velocity_field,["velocities.csv"]),
-        (hidrogel_pipeline.transition_velocity_area,["velocities.csv"])
-
+        (hidrogel_pipeline.transition_velocity_area,["velocities.csv", "velocity_field.npz"])
     ]
     pipeline = [steps[i]
         for i in range(AMOUNT_OF_STEPS)
@@ -59,7 +57,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Command line  tool for hidrogel videos analysis')
     _ = parser.add_argument("-f", "--filepath", required=True, help='path to the file being analized', type=pathlib.Path)
     _ = parser.add_argument("-o", "--outputs-folder", required=False, help='folder used to save the intermediate and final results. The default is to use an outputs folder', type=pathlib.Path, default="outputs/")
-    _ = parser.add_argument("-fps", "--fps", required=False, help='frames per second on the video', type=pathlib.Path, default=80)
+    _ = parser.add_argument("-fps", "--fps", required=True, help='frames per second at which the video was captured. '+
+        'Together with --px-per-mm it converts velocities from px/frame into mm/s, and it sets the length in frames of '+
+        'every time window in the analysis. There is no default and no way to infer it from the file: a wrong value is '+
+        'not an error, it silently rescales every velocity and acceleration the pipeline reports', type=float)
+    _ = parser.add_argument("-pxmm", "--px-per-mm", required=True, help='camera calibration: how many pixels of the '+
+        'image correspond to one millimeter in the silo. Together with --fps it converts velocities from px/frame into '+
+        'mm/s. It depends on the camera position, so it has to be measured again whenever the setup moves: a wrong '+
+        'value is not an error, it silently rescales every velocity the pipeline reports', type=float)
     _ = parser.add_argument("-s", "--start-at-frame", required=False, help='skip up to this frame in the video', type=int, default=0)
     _ = parser.add_argument("-ct", "--cut-top", required=False, help='cut this amount of pixels from the top '+
         'on each frame of the video', type=int, default=0)
