@@ -39,6 +39,7 @@ def main(args: Namespace):
     for step, requirement in pipeline:
         if requirement:
             check_file_exists(requirement, args.outputs_folder)
+        print(f"Running step {step.__name__}")
         step(args)
 
 

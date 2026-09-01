@@ -96,8 +96,10 @@ def extract_features(args: Namespace) -> None:
         `frame` it belongs to and Trackpy's shape/brightness columns (`mass`,
         `size`, `ecc`, `signal`, `raw_mass`, `ep`).
     """
+
     stack = tifffile.imread(Path(args.outputs_folder, PREPROCESSED_FILE))
-    features = detect_features(stack)
+
+    features = detect_features(stack, plot_test=args.debug)
 
     destination = Path(args.outputs_folder, FEATURES_FILE)
     features.to_csv(destination, index=False)

@@ -6,6 +6,7 @@ The default parameters follow Guido's thesis (§4.3.1, TrackMate LoG).
 import numpy as np
 import pandas as pd
 import trackpy as tp
+from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
 DIAMETER = 9                # px, expected tracer diameter (must be odd)
@@ -20,6 +21,7 @@ def detect_features(
     stack: NDArray[np.uint8],
     diameter: int = DIAMETER,
     minmass: float = MINMASS,
+    plot_test: bool = False,
 ) -> pd.DataFrame:
     """Locate the tracers on every frame of a preprocessed stack.
 
@@ -35,6 +37,12 @@ def detect_features(
         One row per detection, with the sub-pixel `x` / `y`, the `frame` it belongs to
         and Trackpy's shape and brightness columns.
     """
+
+    if plot_test:
+        test_features = tp.locate(stack[100], diameter, minmass=minmass)
+        plt.figure(figsize=(14, 14))
+        tp.annotate(test_features, stack[100])
+        plt.close()
     tp.quiet()
     return tp.batch(stack, diameter=diameter, minmass=minmass)
 
