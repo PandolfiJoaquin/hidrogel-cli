@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import pims
 import tifffile
+from matplotlib import pyplot as plt
 
 from .data.preprocessing import preprocess_frames
 from .data.tracking import detect_features, filter_trajectories, link_trajectories
@@ -32,6 +33,10 @@ FIELD_FILE = "velocity_field.npz"
 TRANSITION_FILE = "transition.csv"
 TRANSITION_AREA_FILE = "transition_area.npz"
 
+def load_frame(frames: pims.ImageSequence, i: int) -> np.ndarray:
+    """Frame i como float32 con los recortes (CUT_TOP/CUT_BOTTOM) aplicados."""
+    f = np.asarray(frames[i], dtype=np.float32)
+    return f
 
 def preprocess(args: Namespace) -> None:
     """Extract the background from each frame in the video.
@@ -53,9 +58,25 @@ def preprocess(args: Namespace) -> None:
         `preprocessed.tif` — the uint8 (n_frames, height, width) stack.
     """
     frames = pims.open(str(args.filepath))[args.start_at_frame:]
+
+    if args.debug:
+
+        plt.figure(figsize=(6, 8))
+        plt.imshow(load_frame(frames, 0), cmap="gray")
+        plt.title("Paso 1: Original Frame")
+        plt.axis("off")
+        plt.show()
+        plt.close()
     stack = preprocess_frames(frames, args.cut_top, args.cut_bottom)
 
     destination = Path(args.outputs_folder, PREPROCESSED_FILE)
+    if args.debug:
+        plt.figure(figsize=(6, 8))
+        plt.imshow(stack[args.start_at_frame], cmap="gray")
+        plt.title("Frame preprocesado")
+        plt.axis("off")
+        plt.show()
+        plt.close()
     tifffile.imwrite(destination, stack)
     print(f"preprocess: {stack.shape} -> {destination}")
 
