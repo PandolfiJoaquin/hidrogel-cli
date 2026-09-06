@@ -15,7 +15,11 @@ import numpy as np
 import pandas as pd
 import pims
 import tifffile
+import trackpy as tp
 from matplotlib import pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+from src.model.velocity_field import VelocityField
 
 from .data.preprocessing import preprocess_frames
 from .data.tracking import detect_features, filter_trajectories, link_trajectories
@@ -32,6 +36,7 @@ VELOCITIES_FILE = "velocities.csv"
 FIELD_FILE = "velocity_field.npz"
 TRANSITION_FILE = "transition.csv"
 TRANSITION_AREA_FILE = "transition_area.npz"
+VELOCITIES_FIELD_VIDEO = "velocity_field.mp4"
 
 def load_frame(frames: pims.ImageSequence, i: int) -> np.ndarray:
     """Frame i como float32 con los recortes (CUT_TOP/CUT_BOTTOM) aplicados."""
@@ -129,6 +134,10 @@ def extract_velocities(args: Namespace) -> None:
     """
     features = pd.read_csv(Path(args.outputs_folder, FEATURES_FILE))
     tracks = filter_trajectories(link_trajectories(features))
+    if args.debug:
+        plt.figure(figsize=(12, 12))
+        plt.title("Remaining trajectories")
+        tp.plot_traj(tracks)
     velocities = add_velocities(tracks)
 
     destination = Path(args.outputs_folder, VELOCITIES_FILE)
@@ -157,7 +166,8 @@ def calculate_velocity_field(args: Namespace) -> None:
     """
     velocities = pd.read_csv(Path(args.outputs_folder, VELOCITIES_FILE))
     field = compute_velocity_field(velocities)
-
+    if args.debug:
+        plotp(field, args)
     destination = Path(args.outputs_folder, FIELD_FILE)
     np.savez_compressed(
         destination,
@@ -171,6 +181,31 @@ def calculate_velocity_field(args: Namespace) -> None:
     )
     print(f"calculate_velocity_field: {field.Px.shape} -> {destination}")
 
+def plotp(field: VelocityField, args: Namespace) -> None:
+    all_speed = np.sqrt(field.Px**2 + field.Py**2)
+    plt.rcParams['animation.embed_limit'] = 200
+    fig, ax = plt.subplots(figsize=(10, 8))
+    X, Y = np.meshgrid(np.arange(field.nx_bins), np.arange(field.ny_bins))
+
+    # angles='xy': dirección en coords de DATOS (respeta invert_yaxis). Con el default 'uv'
+    # las flechas ignoran la inversión y los pockets que caen salen apuntando arriba.
+    Q = ax.quiver(X, Y, field.Px[0], field.Py[0], all_speed[0], angles='xy',
+                  cmap="plasma", scale=40, width=0.005)
+    ax.invert_yaxis()
+    title = ax.set_title(f"Frame {field.frames_list[0]}")
+
+    def update(i):
+        vx, vy, speed = field.Px[i], field.Py[i], all_speed[i]
+        Q.set_UVC(vx, vy, speed)
+        title.set_text(f"Frame {field.frames_list[i]}")
+        return Q, title
+
+    ani = FuncAnimation(fig, update, frames=len(field.frames_list), interval=50, blit=True)
+
+    destination = Path(args.outputs_folder, VELOCITIES_FIELD_VIDEO)
+    ani.save(destination, writer='ffmpeg', fps=20)
+    print(f"video saved at {destination}")
+    plt.close()
 
 def transition_velocity_area(args: Namespace) -> None:
     """Locate the beads that are in transition — starting to move, not yet falling.
