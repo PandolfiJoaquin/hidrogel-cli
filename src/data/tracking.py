@@ -42,6 +42,7 @@ def detect_features(
         test_features = tp.locate(stack[100], diameter, minmass=minmass)
         plt.figure(figsize=(14, 14))
         tp.annotate(test_features, stack[100])
+        plt.show()
         plt.close()
     tp.quiet()
     return tp.batch(stack, diameter=diameter, minmass=minmass)
