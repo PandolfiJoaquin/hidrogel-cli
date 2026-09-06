@@ -17,7 +17,7 @@ AMOUNT_OF_STEPS = 5
 #     if any(steps_to_run, lambda step: step > AMOUNT_OF_STEPS):
 #         raise ValueError(f"There are only {AMOUNT_OF_STEPS} steps in the pipeline")
 
-Step = tuple[Callable[[Namespace], None], list[str]] # (callable, [all, callable, dependencies])
+Step = Callable[[Namespace], None]
 
 def main(args: Namespace):
     Path(args.outputs_folder).mkdir(parents=True, exist_ok=True)
@@ -25,7 +25,7 @@ def main(args: Namespace):
     steps_to_run = args.run_steps
     # validate_steps_to_run(steps_to_run)
 
-    steps: list[Step] = [
+    steps: list[tuple[Step, list[str]]] = [ # callable step + filenames needed to run that step
         (hidrogel_pipeline.preprocess,[]),
         (hidrogel_pipeline.extract_features,["preprocessed.tif"]),
         (hidrogel_pipeline.extract_velocities,["features.csv"]),
