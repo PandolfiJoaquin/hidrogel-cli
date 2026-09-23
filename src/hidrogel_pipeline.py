@@ -18,6 +18,7 @@ import tifffile
 import trackpy as tp
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from src.model.velocity_field import VelocityField
 
@@ -37,6 +38,7 @@ FIELD_FILE = "velocity_field.npz"
 TRANSITION_FILE = "transition.csv"
 TRANSITION_AREA_FILE = "transition_area.npz"
 VELOCITIES_FIELD_VIDEO = "velocity_field.mp4"
+TRANSITION_FIELD_VIDEO = "transition_field.mp4"
 
 def load_frame(frames: pims.ImageSequence, i: int) -> np.ndarray:
     """Frame i como float32 con los recortes (CUT_TOP/CUT_BOTTOM) aplicados."""
@@ -167,7 +169,7 @@ def calculate_velocity_field(args: Namespace) -> None:
     velocities = pd.read_csv(Path(args.outputs_folder, VELOCITIES_FILE))
     field = compute_velocity_field(velocities)
     if args.debug:
-        plotp(field, args)
+        plotfield(field, args)
     destination = Path(args.outputs_folder, FIELD_FILE)
     np.savez_compressed(
         destination,
@@ -181,28 +183,52 @@ def calculate_velocity_field(args: Namespace) -> None:
     )
     print(f"calculate_velocity_field: {field.Px.shape} -> {destination}")
 
-def plotp(field: VelocityField, args: Namespace) -> None:
+def plotfield(field: VelocityField, args: Namespace, thresholds: tuple[float, float] | None = None) -> None:
+    """Render the velocity field as a quiver animation.
+
+    Args:
+        field: The per-frame velocity grid to animate.
+        args: Parsed CLI arguments. Uses `outputs_folder` for the output path.
+        thresholds: When given, the `(v_static, hi)` velocity edges in px/frame (the
+            same units as the field). Arrows are then coloured by regime — static below
+            `v_static`, transition (medium velocity) between the edges, and fall above
+            `hi` — instead of by a continuous speed colormap.
+    """
     all_speed = np.sqrt(field.Px**2 + field.Py**2)
     plt.rcParams['animation.embed_limit'] = 200
     fig, ax = plt.subplots(figsize=(10, 8))
     X, Y = np.meshgrid(np.arange(field.nx_bins), np.arange(field.ny_bins))
 
+    if thresholds is not None:
+        # 0 static, 1 transition (medium velocity), 2 fall — one discrete colour each.
+        colours = np.digitize(all_speed, list(thresholds))
+        cmap = ListedColormap(["#9e9e9e", "#e6194b", "#3cb44b"])
+        norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5], cmap.N)
+    else:
+        colours = all_speed
+        cmap, norm = "plasma", None
+
     # angles='xy': dirección en coords de DATOS (respeta invert_yaxis). Con el default 'uv'
     # las flechas ignoran la inversión y los pockets que caen salen apuntando arriba.
-    Q = ax.quiver(X, Y, field.Px[0], field.Py[0], all_speed[0], angles='xy',
-                  cmap="plasma", scale=40, width=0.005)
+    Q = ax.quiver(X, Y, field.Px[0], field.Py[0], colours[0], angles='xy',
+                  cmap=cmap, norm=norm, scale=40, width=0.005)
     ax.invert_yaxis()
     title = ax.set_title(f"Frame {field.frames_list[0]}")
 
+    if thresholds is not None:
+        cbar = fig.colorbar(Q, ax=ax, ticks=[0, 1, 2])
+        cbar.ax.set_yticklabels(["static", "transition", "fall"])
+
     def update(i):
-        vx, vy, speed = field.Px[i], field.Py[i], all_speed[i]
+        vx, vy, speed = field.Px[i], field.Py[i], colours[i]
         Q.set_UVC(vx, vy, speed)
         title.set_text(f"Frame {field.frames_list[i]}")
         return Q, title
 
     ani = FuncAnimation(fig, update, frames=len(field.frames_list), interval=50, blit=True)
 
-    destination = Path(args.outputs_folder, VELOCITIES_FIELD_VIDEO)
+    name = TRANSITION_FIELD_VIDEO if thresholds is not None else VELOCITIES_FIELD_VIDEO
+    destination = Path(args.outputs_folder, name)
     ani.save(destination, writer='ffmpeg', fps=20)
     print(f"video saved at {destination}")
     plt.close()
@@ -245,6 +271,16 @@ def transition_velocity_area(args: Namespace) -> None:
     tagged = tag_regimes(clean, thresholds, fps, k)
     area = compute_transition_area(tagged, field["x_bins"], field["y_bins"], n_frames)
 
+    if args.debug:
+        vfield = VelocityField(
+            Px=field["Px"],
+            Py=field["Py"],
+            frames_list=field["frames_list"],
+            x_bins=field["x_bins"],
+            y_bins=field["y_bins"],
+        )
+        plotfield(vfield, args, thresholds=(thresholds.v_static, thresholds.hi_pxf(k)))
+
     tagged.to_csv(Path(args.outputs_folder, TRANSITION_FILE), index=False)
     np.savez_compressed(
         Path(args.outputs_folder, TRANSITION_AREA_FILE),
@@ -256,4 +292,4 @@ def transition_velocity_area(args: Namespace) -> None:
         hi=thresholds.hi,
         v_cut=v_cut,
     )
-    print(f"transition_velocity_area: {thresholds.v_static * k:.0f}-{thresholds.hi:.0f} mm/s ")
+    print(f"transition_velocity_area: {thresholds.v_static * k} ; {thresholds.hi} mm/s ")
